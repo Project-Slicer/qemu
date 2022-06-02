@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 /* Initialize the system call proxy */
-SyscallProxy sys_proxy_init(const char *cmdline);
+SyscallProxy sys_proxy_init(const char *filename, const char *cmdline);
 
 /* Handle the command from the target */
 int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost);

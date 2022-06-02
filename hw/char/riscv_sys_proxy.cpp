@@ -61,8 +61,8 @@ public:
 
 class Host : public syscall_host_t {
 public:
-    Host(const char *cmdline) : exit_code_(0), memif_(&mem_) {
-        init_target_args(cmdline);
+    Host(const char *filename, const char *cmdline) : exit_code_(0), memif_(&mem_) {
+        init_target_args(filename, cmdline);
     }
 
     void check_exit() {
@@ -76,7 +76,9 @@ public:
     const std::vector<std::string> &target_args() override { return targs_; }
 
 private:
-    void init_target_args(const char *cmdline) {
+    void init_target_args(const char *filename, const char *cmdline) {
+        targs_.push_back(filename);
+        // parse shell command line
         if (!cmdline) return;
         const char *p = cmdline;
         std::string arg;
@@ -126,7 +128,8 @@ private:
 
 class SyscallProxy {
 public:
-    SyscallProxy(const char *cmdline) : host_(cmdline), syscall_(&host_) {}
+    SyscallProxy(const char *filename, const char *cmdline)
+            : host_(filename, cmdline), syscall_(&host_) {}
 
     void handle_command(command_t cmd) { syscall_.handle_command(cmd); }
     void check_exit() { host_.check_exit(); }
@@ -140,9 +143,9 @@ private:
 
 } // namespace impl
 
-SyscallProxy sys_proxy_init(const char *cmdline)
+SyscallProxy sys_proxy_init(const char *filename, const char *cmdline)
 {
-    return new impl::SyscallProxy(cmdline);
+    return new impl::SyscallProxy(filename, cmdline);
 }
 
 int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost)
