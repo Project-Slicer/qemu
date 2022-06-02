@@ -229,8 +229,7 @@ bool htif_uses_elf_symbols(void)
 }
 
 HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
-    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base,
-    const char *filename, const char *cmdline)
+    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base, const char *cmdline)
 {
     uint64_t base, size, tohost_offset, fromhost_offset;
 
@@ -258,7 +257,7 @@ HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
     qemu_chr_fe_set_handlers(&s->chr, htif_can_recv, htif_recv, htif_event,
         htif_be_change, s, NULL, true);
     
-    s->sys_proxy = sys_proxy_init(filename, cmdline);
+    s->sys_proxy = sys_proxy_init(cmdline);
 
     memory_region_init_io(&s->mmio, NULL, &htif_mm_ops, s,
                           TYPE_HTIF_UART, size);
@@ -266,4 +265,9 @@ HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
                                         &s->mmio, 1);
 
     return s;
+}
+
+void htif_sys_proxy_error_report(const char *message)
+{
+    error_report("HTIF syscall proxy: %s", message);
 }

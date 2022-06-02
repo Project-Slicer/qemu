@@ -59,7 +59,9 @@ bool htif_uses_elf_symbols(void);
 
 /* legacy pre qom */
 HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
-    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base,
-    const char *filename, const char *cmdline);
+    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base, const char *cmdline);
+
+/* Error report function for syscall proxy */
+void htif_sys_proxy_error_report(const char *message);
 
 #endif
