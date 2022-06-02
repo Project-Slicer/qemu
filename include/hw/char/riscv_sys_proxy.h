@@ -19,12 +19,22 @@
 #ifndef HW_RISCV_SYS_PROXY_H
 #define HW_RISCV_SYS_PROXY_H
 
+#include <stdint.h>
+
 typedef void *SyscallProxy;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Initialize the system call proxy */
-SyscallProxy sys_proxy_init(const char *filename, const char *cmdline);
+SyscallProxy sys_proxy_init(const char *cmdline);
 
 /* Handle the command from the target */
 int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

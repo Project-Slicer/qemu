@@ -16,12 +16,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern "C" {
 #include "hw/char/riscv_sys_proxy.h"
-#include "exec/cpu-common.h"
-#include "qemu/error-report.h"
-}
-
+#include "exec/hwaddr.h"
 #include "fesvr/memif.h"
 #include "fesvr/syscall_host.h"
 #include "fesvr/syscall.h"
@@ -33,6 +29,10 @@ extern "C" {
 #include <stdexcept>
 #include <vector>
 
+extern "C" void cpu_physical_memory_rw(hwaddr addr, void *buf, hwaddr len,
+                                       bool is_write);
+extern "C" void htif_sys_proxy_error_report(const char *message);
+
 namespace impl {
 
 class MemoryWrapper : public chunked_memif_t {
@@ -40,11 +40,11 @@ public:
     MemoryWrapper() {}
 
     void read_chunk(addr_t taddr, size_t len, void *dst) override {
-        cpu_physical_memory_read(taddr, dst, len);
+        cpu_physical_memory_rw(taddr, dst, len, false);
     }
 
     void write_chunk(addr_t taddr, size_t len, const void *src) override {
-        cpu_physical_memory_write(taddr, src, len);
+        cpu_physical_memory_rw(taddr, const_cast<void *>(src), len, true);
     }
 
     void clear_chunk(addr_t taddr, size_t len) override {
@@ -61,8 +61,8 @@ public:
 
 class Host : public syscall_host_t {
 public:
-    Host(const char *filename, const char *cmdline) : memif_(&mem_), exit_code_(0) {
-        init_target_args(filename, cmdline);
+    Host(const char *cmdline) : exit_code_(0), memif_(&mem_) {
+        init_target_args(cmdline);
     }
 
     void check_exit() {
@@ -76,9 +76,7 @@ public:
     const std::vector<std::string> &target_args() override { return targs_; }
 
 private:
-    void init_target_args(const char *filename, const char *cmdline) {
-        targs_.push_back(filename);
-        // parse shell command line
+    void init_target_args(const char *cmdline) {
         if (!cmdline) return;
         const char *p = cmdline;
         std::string arg;
@@ -128,8 +126,7 @@ private:
 
 class SyscallProxy {
 public:
-    SyscallProxy(const char *filename, const char *cmdline)
-            : host_(filename, cmdline), syscall_(&host_) {}
+    SyscallProxy(const char *cmdline) : host_(cmdline), syscall_(&host_) {}
 
     void handle_command(command_t cmd) { syscall_.handle_command(cmd); }
     void check_exit() { host_.check_exit(); }
@@ -143,9 +140,9 @@ private:
 
 } // namespace impl
 
-SyscallProxy sys_proxy_init(const char *filename, const char *cmdline)
+SyscallProxy sys_proxy_init(const char *cmdline)
 {
-    return new impl::SyscallProxy(filename, cmdline);
+    return new impl::SyscallProxy(cmdline);
 }
 
 int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost)
@@ -156,7 +153,7 @@ int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost)
     try {
         sp->handle_command(cmd);
     } catch (std::runtime_error &e) {
-        error_report("HTIF syscall proxy: %s", e.what());
+        htif_sys_proxy_error_report(e.what());
         std::exit(1);
     }
     sp->check_exit();
