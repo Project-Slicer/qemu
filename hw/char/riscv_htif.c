@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  * Copyright (c) 2017-2018 SiFive, Inc.
+ * Copyright (c) 2022 Max Xing, x@maxxsoft.net
  *
  * This provides HTIF device emulation for QEMU. At the moment this allows
  * for identical copies of bbl/linux to run on both spike and QEMU.
@@ -122,19 +123,13 @@ static void htif_handle_tohost_write(HTIFState *htifstate, uint64_t val_written)
 
     /*
      * Currently, there is a fixed mapping of devices:
-     * 0: riscv-tests Pass/Fail Reporting Only (no syscall proxy)
+     * 0: Syscall Proxy
      * 1: Console
      */
     if (unlikely(device == 0x0)) {
-        /* frontend syscall handler, shutdown and exit code support */
+        /* frontend syscall handler */
         if (cmd == 0x0) {
-            if (payload & 0x1) {
-                /* exit code */
-                int exit_code = payload >> 1;
-                exit(exit_code);
-            } else {
-                qemu_log_mask(LOG_UNIMP, "pk syscall proxy not supported\n");
-            }
+            resp = sys_proxy_handle_command(htifstate->sys_proxy, val_written);
         } else {
             qemu_log("HTIF device %d: unknown command\n", device);
         }
@@ -234,7 +229,8 @@ bool htif_uses_elf_symbols(void)
 }
 
 HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
-    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base)
+    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base,
+    const char *filename, const char *cmdline)
 {
     uint64_t base, size, tohost_offset, fromhost_offset;
 
@@ -261,6 +257,8 @@ HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
     qemu_chr_fe_init(&s->chr, chr, &error_abort);
     qemu_chr_fe_set_handlers(&s->chr, htif_can_recv, htif_recv, htif_event,
         htif_be_change, s, NULL, true);
+    
+    s->sys_proxy = sys_proxy_init(filename, cmdline);
 
     memory_region_init_io(&s->mmio, NULL, &htif_mm_ops, s,
                           TYPE_HTIF_UART, size);

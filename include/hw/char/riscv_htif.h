@@ -24,6 +24,7 @@
 #include "chardev/char-fe.h"
 #include "exec/memory.h"
 #include "target/riscv/cpu.h"
+#include "hw/char/riscv_sys_proxy.h"
 
 #define TYPE_HTIF_UART "riscv.htif.uart"
 
@@ -42,6 +43,7 @@ typedef struct HTIFState {
 
     CPURISCVState *env;
     CharBackend chr;
+    SyscallProxy sys_proxy;
     uint64_t pending_read;
 } HTIFState;
 
@@ -57,6 +59,7 @@ bool htif_uses_elf_symbols(void);
 
 /* legacy pre qom */
 HTIFState *htif_mm_init(MemoryRegion *address_space, MemoryRegion *main_mem,
-    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base);
+    CPURISCVState *env, Chardev *chr, uint64_t nonelf_base,
+    const char *filename, const char *cmdline);
 
 #endif
