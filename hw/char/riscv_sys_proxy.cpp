@@ -145,7 +145,12 @@ private:
 
 SyscallProxy sys_proxy_init(const char *filename, const char *cmdline)
 {
-    return new impl::SyscallProxy(filename, cmdline);
+    try {
+        return new impl::SyscallProxy(filename, cmdline);
+    } catch (std::runtime_error &e) {
+        htif_sys_proxy_error_report(e.what());
+        std::exit(1);
+    }
 }
 
 int sys_proxy_handle_command(SyscallProxy sys_proxy, uint64_t tohost)
